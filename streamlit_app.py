@@ -9,8 +9,10 @@ from app.ai_generator import (
     ASSESSMENT_METHODS_LIST,
     BACKGROUND_PART_A_PROMPT_TEMPLATE,
     BACKGROUND_PART_B_PROMPT_TEMPLATE,
+    COURSE_TOPICS_PROMPT_TEMPLATE,
     INSTRUCTION_METHOD_PROMPT_TEMPLATE,
     INSTRUCTION_METHODS_LIST,
+    UNIQUE_SKILL_NAMES_LIST,
     JOB_ROLES_PROMPT_TEMPLATE,
     MINIMUM_ENTRY_REQUIREMENT_PROMPT_TEMPLATE,
     WHAT_YOULL_LEARN_PROMPT_TEMPLATE,
@@ -18,6 +20,7 @@ from app.ai_generator import (
     generate_assessment_method,
     generate_background_part_a,
     generate_background_part_b,
+    generate_course_topics,
     generate_instruction_method,
     generate_job_roles,
     generate_minimum_entry_requirement,
@@ -36,6 +39,7 @@ if "active_page" not in st.session_state:
 
 with st.sidebar:
     st.title("WSQ/CASL CP Generator")
+    cp_mode = st.radio("Mode", ["CASL", "WSQ"], horizontal=True, key="cp_mode", label_visibility="collapsed")
 
     st.markdown("---")
     st.caption("PREPARE CP")
@@ -104,21 +108,89 @@ if active_page == "Course Details":
     st.header("Course Details")
     st.markdown("Enter the course title and topics. This information will be used across all Prepare CP pages.")
 
+    # --- Course Title (outside form) ---
+    if "cd_course_title" not in st.session_state:
+        st.session_state["cd_course_title"] = st.session_state.get("saved_course_title", "")
+    course_title = st.text_input(
+        "Course Title",
+        placeholder="e.g. Sales and Marketing Mastery",
+        key="cd_course_title",
+    )
+
+    # --- CASL-specific fields ---
+    if st.session_state.get("cp_mode") == "CASL":
+        unique_skill_name = st.selectbox(
+            "Unique Skill Name",
+            options=UNIQUE_SKILL_NAMES_LIST,
+            index=UNIQUE_SKILL_NAMES_LIST.index(st.session_state["saved_unique_skill_name"])
+            if st.session_state.get("saved_unique_skill_name") in UNIQUE_SKILL_NAMES_LIST
+            else 0,
+            key="cd_unique_skill_name",
+        )
+
+    # --- WSQ-specific fields ---
+    if st.session_state.get("cp_mode") == "WSQ":
+        col_tsc_code, col_tsc_title = st.columns(2)
+        with col_tsc_code:
+            tsc_ref_code = st.text_input(
+                "TSC Reference Code",
+                value=st.session_state.get("saved_tsc_ref_code", ""),
+                placeholder="e.g. TSC-2024-001",
+                key="cd_tsc_ref_code",
+            )
+        with col_tsc_title:
+            tsc_title = st.text_input(
+                "TSC Title",
+                value=st.session_state.get("saved_tsc_title", ""),
+                placeholder="e.g. Digital Marketing Strategy",
+                key="cd_tsc_title",
+            )
+
+    # --- Generate Topics with AI ---
+    if "cd_course_topics" not in st.session_state:
+        st.session_state["cd_course_topics"] = st.session_state.get("saved_course_topics", "")
+
+    with st.expander("Generate Topics with AI", expanded=False):
+        st.markdown("Auto-generate course topics based on the course title. You can edit the results afterwards.")
+        gen_num_topics = st.number_input(
+            "Number of topics to generate",
+            min_value=1,
+            value=st.session_state.get("saved_num_topics", 4),
+            step=1,
+            key="gen_num_topics",
+        )
+        if st.button("Generate Topics", type="primary", use_container_width=True, key="gen_topics_btn"):
+            if not course_title:
+                st.warning("Please enter a course title first.")
+            else:
+                with st.spinner("Generating course topics..."):
+                    try:
+                        result = generate_course_topics(course_title, gen_num_topics)
+                        st.session_state["cd_course_topics"] = result
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to generate topics: {e}")
+
+    # --- Course Topics (outside form, editable) ---
+    course_topics = st.text_area(
+        "Course Topics",
+        placeholder=(
+            "## Topic 1: Strategic Marketing Principles\n"
+            "- Explain core marketing frameworks and models\n"
+            "- Identify target market segments and positioning strategies\n\n"
+            "## Topic 2: Consumer Behaviour Analysis\n"
+            "- Describe consumer decision-making processes\n"
+            "- Analyse factors influencing purchasing behaviour"
+        ),
+        height=400,
+        key="cd_course_topics",
+    )
+    if course_topics:
+        with st.expander("Preview", expanded=True):
+            st.markdown(course_topics)
+
+    # --- Rest of settings in form ---
     with st.form("course_details_form"):
-        course_title = st.text_input(
-            "Course Title",
-            value=saved_title,
-            placeholder="e.g. Sales and Marketing Mastery",
-        )
-        course_topics = st.text_area(
-            "Course Topics",
-            value=saved_topics,
-            placeholder=(
-                "e.g. Strategic marketing principles, Consumer behaviour analysis, "
-                "Digital marketing channels, Sales pipeline management, Negotiation techniques"
-            ),
-            height=150,
-        )
         col_dur, col_topics = st.columns(2)
         with col_dur:
             course_duration = st.number_input(
@@ -198,6 +270,11 @@ if active_page == "Course Details":
             st.session_state["saved_num_assess_methods"] = num_assess_methods
             st.session_state["saved_instr_methods"] = selected_instr_methods
             st.session_state["saved_assess_methods"] = selected_assess_methods
+            if st.session_state.get("cp_mode") == "CASL":
+                st.session_state["saved_unique_skill_name"] = unique_skill_name
+            if st.session_state.get("cp_mode") == "WSQ":
+                st.session_state["saved_tsc_ref_code"] = tsc_ref_code
+                st.session_state["saved_tsc_title"] = tsc_title
             st.rerun()
 
     # --- Show saved details ---

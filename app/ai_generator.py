@@ -474,6 +474,80 @@ def generate_minimum_entry_requirement(
     )
 
 
+COURSE_TOPICS_PROMPT_TEMPLATE = """\
+You are an expert curriculum designer for professional training and \
+continuing education programmes. Generate a structured list of course \
+topics with learning outcomes for the following course.
+
+Course Title: {course_title}
+Number of Topics: {num_topics}
+
+Guidelines:
+- Generate exactly {num_topics} course topics that are directly relevant \
+to the course title
+- Each topic should represent a distinct, teachable module or unit
+- Topics should follow a logical learning progression (foundational to advanced)
+- Use concise, professional topic names (3-8 words each)
+- Each topic must include 3-5 specific learning outcomes as bullet points
+- Learning outcomes should start with action verbs (Explain, Describe, \
+Identify, Recognise, Differentiate, Develop, Apply, Analyse, Evaluate)
+- Topics should be suitable for WSQ/CASL course proposals
+- Use the exact markdown format shown in the example below
+- Use ## for topic headings with numbering (## Topic 1: ...)
+- Use - for learning outcome bullet points
+- Add two trailing spaces after each bullet point line for line breaks
+
+Example (Course: Business Innovation with Agentic AI, 6 topics):
+
+## Topic 1: Business Innovation in the Age of Agentic AI
+- Explain the evolution of business innovation in relation to artificial intelligence
+- Describe the key characteristics of Agentic AI
+- Identify potential applications of Agentic AI across different industries
+- Recognise opportunities for business innovation enabled by Agentic AI
+
+## Topic 2: Agentic Vibe Coding for Business Innovation
+- Describe the concept and purpose of Agentic Vibe Coding
+- Explain intent-driven approaches to coding and system design
+- Identify the roles, goals, and constraints of AI agents in business contexts
+- Recognise the use of low-code and no-code platforms for agentic solutions
+
+## Topic 3: Agentic Workflow Design for Business Processes
+- Differentiate between single-agent and multi-agent systems
+- Explain how agents collaborate and coordinate within workflows
+- Identify business processes suitable for agentic workflow implementation
+- Describe human-AI collaboration models within agentic systems
+
+## Topic 4: Building an Agentic AI Workforce
+- Explain the concept of AI agents as digital workers
+- Identify role-based designs for an Agentic AI workforce
+- Describe approaches to scaling agentic teams within organisations
+- Explain methods for managing and monitoring AI workforce performance
+
+## Topic 5: Governance, Risk, and Ethics in Agentic AI
+- Explain governance frameworks applicable to Agentic AI systems
+- Identify risks associated with autonomous and semi-autonomous AI systems
+- Describe ethical considerations in the deployment of Agentic AI
+- Recognise regulatory and compliance considerations relevant to Agentic AI
+
+## Topic 6: Measuring Innovation and Business Impact
+- Identify performance indicators for Agentic AI initiatives
+- Explain methods for measuring business value and return on investment
+- Describe change management considerations for AI adoption
+- Develop a roadmap for enterprise-scale deployment of Agentic AI solutions
+
+Respond with ONLY the formatted topics and learning outcomes, nothing else."""
+
+
+def generate_course_topics(
+    course_title: str, num_topics: int, prompt_template: str | None = None
+) -> str:
+    """Generate course topics using the Claude Agent SDK."""
+    template = prompt_template or COURSE_TOPICS_PROMPT_TEMPLATE
+    return asyncio.run(
+        _generate_async(template, course_title=course_title, num_topics=str(num_topics))
+    )
+
+
 JOB_ROLES_PROMPT_TEMPLATE = """\
 You are an expert in Singapore's workforce development ecosystem. Generate \
 10 relevant job roles for the following course. The job role names must follow \
@@ -506,6 +580,280 @@ def generate_job_roles(
     return asyncio.run(
         _generate_async(template, course_title=course_title, course_topics=course_topics)
     )
+
+
+UNIQUE_SKILL_NAMES_LIST = [
+    "Accident and Incident Response Management",
+    "Agile Coaching",
+    "Ambulance Readiness and Maintenance",
+    "Analytical Method Validation",
+    "Arrestation",
+    "Artificial Intelligence Ethics and Governance",
+    "Arts Curriculum Design",
+    "Attractions Content and Experience Development and Delivery",
+    "Attractions Guest Relations Management",
+    "Attractions Membership, Admission and Ticketing Management",
+    "Audio Programming",
+    "Audit Compliance",
+    "Audit Frameworks",
+    "Auditing and Assurance Standards",
+    "Auditor Independence",
+    "Ballast System Design",
+    "Behavioural Economics in Design",
+    "Billing Procedure",
+    "Bulk Cargo Operations",
+    "Bus Fare Management",
+    "Bus Garaging",
+    "Business Innovation and Improvement",
+    "Business Requirements Mapping",
+    "Call Centre Management",
+    "Cargo and Receipt Inspection",
+    "Cargo Issuance and Dispatch",
+    "Case and Care Planning",
+    "Casework Evaluation",
+    "Category Management",
+    "Category Marketing",
+    "Channel Management",
+    "Civil Structure Maintenance",
+    "Client Assessment for Occupational Therapy",
+    "Client Assessment for Physiotherapy",
+    "Client Assessment for Speech Therapy",
+    "Clinical Governance",
+    "Clinical Supervision",
+    "Commodities Trading Management",
+    "Common Data Environment Management",
+    "Communication and Navigation System Design",
+    "Computer-aided Design",
+    "Computerised Systems Validation",
+    "Condition Monitoring",
+    "Condition-based Monitoring",
+    "Conflict Management",
+    "Content Acquisition Management",
+    "Content Commissioning",
+    "Content Development and Strategy",
+    "Content Distribution",
+    "Contract Administration and Management",
+    "Contract and Vendor Management",
+    "Contract Development and Management",
+    "Counselling Assessment",
+    "Creative Entrepreneurship",
+    "Credit Assessment",
+    "Crew Management",
+    "Cultural Sensitivity for Design",
+    "Customer Acquisition Management",
+    "Customer Service Innovation Management",
+    "Customisation and Localisation",
+    "Data and Information Visualisation",
+    "Data Collection and Analysis",
+    "Decarbonisation Consulting",
+    "Decarbonisation Project Development",
+    "Defect Density Monitoring",
+    "Design Concepts Generation",
+    "Design for Safety",
+    "Design Writing",
+    "Document Management for Pharmacy Support",
+    "Documentation",
+    "Documentation and Administration",
+    "Dry Dock Project Management",
+    "Electrical Engineering Management",
+    "Electrostatic Discharge Control",
+    "Empathetic Design",
+    "Engineering Contract Management",
+    "Engineering Drawing, Interpretation and Management",
+    "Engineering Safety and Security Standards",
+    "Engineering Safety Standards Interpretation",
+    "Engineering Support Management",
+    "Enterprise Database System Administration",
+    "Environment and Social Governance",
+    "Environment Impact Assessment",
+    "Environmental Management System Policies, Standards, Procedures and Practices Management",
+    "Equipment and Systems Testing",
+    "Equipment Drawing",
+    "Equipment Maintenance and Housekeeping",
+    "Evidence Management",
+    "Executive Protection",
+    "Financial Crime Laws and Regulations",
+    "Fleet Procurement",
+    "Food and Beverage Equipment Maintenance",
+    "Food and Beverage Production Management",
+    "Food Manufacturing Process Design",
+    "Gas Network System Management",
+    "Hazardous Materials Identification System (HMIS) Administration",
+    "Hazards and Risk Identification and Management",
+    "Heating, Ventilation and Air Conditioning System Design",
+    "Heavy Crane Vehicle Maintenance",
+    "High Speed Camera Operations",
+    "Hospitality Venue Inspection",
+    "House Brand Development",
+    "Human Resource Systems Management",
+    "Image Processing and Industrial Vision Inspection",
+    "Immersive Video Editing",
+    "Incident and Accident Investigation",
+    "Information Collection",
+    "Innovation",
+    "Integrated System Design and Application",
+    "Intellectual Property Commercialisation and Exploitation",
+    "Intellectual Property Enforcement",
+    "Intellectual Property in Research and Development",
+    "Intellectual Property Licencing",
+    "Intellectual Property Management",
+    "Intellectual Property Portfolio Management",
+    "Internal Controls",
+    "Internal Controls in Product Development",
+    "IT Asset Management",
+    "IT Standards",
+    "IT Strategy",
+    "Knowledge Management",
+    "Labour Relations Management",
+    "Landscape Tools, Equipment and Machinery Management",
+    "Learning Needs Analysis",
+    "Legal Writing",
+    "Lighting Operations",
+    "Loss and Risk Prevention Management",
+    "Maintenance Coordination",
+    "Maintenance Scheduling",
+    "Manpower Planning and Deployment",
+    "Manufacturing Workflow Management",
+    "Marine Design Customisation",
+    "Marine Engineering Calculations",
+    "Marine Incident and Accident Investigations",
+    "Marine Insurance Underwriting Profitability and Efficiency Management",
+    "Marine Survey Reporting",
+    "Maritime Emergency Response Management",
+    "Maritime Hazards Identification",
+    "Maritime Incident Management",
+    "Market Entry Strategy Formulation",
+    "Market Risk Management",
+    "Marketing Strategy Development",
+    "Material Qualification",
+    "Materials Qualification",
+    "Measurement of Building and Construction Works",
+    "Mechanical Engineering Management",
+    "Mechanical Maintenance Management",
+    "Media Data Management",
+    "Media Distribution Platform Management",
+    "Media Strategy Development",
+    "Medication Dispensing",
+    "Merchandise Performance Analysis",
+    "Metal Forming",
+    "Metrology Management",
+    "Mobile Equipment - Heavy Duty Prime Mover and Trailer Operations",
+    "Mobile Equipment - Prime Mover Defensive Driving",
+    "Multi-function Vehicle Maintenance",
+    "Narrative Design",
+    "Narrative Design in Product Development",
+    "Naval Architecture Calculations",
+    "Network Monitoring, Control and Supply Restoration",
+    "Network Simulation and Analysis",
+    "Network Systems Maintenance",
+    "Non-destructive Testing",
+    "Non-destructive Testing (Radiographic Inspection)",
+    "Novel Food Application",
+    "Nursing Research and Statistics",
+    "Operational Risk Management",
+    "Organisational Analysis Management",
+    "Patent Office Action and Infringements",
+    "Pest Control Site Assessment and Analysis",
+    "Pest Disposal Management",
+    "Plastic Injection Moulding",
+    "Policy Implementation and Revision",
+    "Port Call Planning",
+    "Portfolio Management",
+    "Power Plant Incident Investigation Management",
+    "Pricing Strategy",
+    "Process Optimisation",
+    "Process Validation",
+    "Procurement Coordination and Policy Development",
+    "Procurement Performance Monitoring",
+    "Product Costing and Pricing",
+    "Product Improvement",
+    "Product Lifecycle Management",
+    "Product Risk Assessment",
+    "Product Testing",
+    "Product, Content and Experience Performance Management",
+    "Production Budget Management",
+    "Production Operations",
+    "Production Planning and Scheduling",
+    "Productivity and Innovation Strategy",
+    "Productivity Optimisation for Food and Beverages Operations",
+    "Project Cost",
+    "Project Timeline",
+    "Prompt Engineering",
+    "Prop Design",
+    "Public Areas Housekeeping Operations Management",
+    "Qualitative Research",
+    "Quality Control and Assurance",
+    "Quality Improvement and Safe Practices",
+    "Radioactive Materials and Irradiating Apparatus Management",
+    "Regulatory Risk Assessment",
+    "Regulatory Submission and Clearance",
+    "Research Translation",
+    "Risk Advisory",
+    "Risk and Compliance Reporting",
+    "Risk and Crisis Management",
+    "Risk Compliance and Governance",
+    "Risk Management and Administration",
+    "Room Reservation Operations Management",
+    "Security Event Management",
+    "Set Design",
+    "Sheet Metal Structures Maintenance",
+    "Ship Cyber Security",
+    "Ship Maintenance and Repair (Dock)",
+    "Ship Propulsion Inspections",
+    "Ship Safety Management Systems Audit",
+    "Shipment Load Planning and Palletisation / Consolidation",
+    "Single Stack Medium Forklift Operations",
+    "Social Policy Evaluation",
+    "Social Service Programme Evaluation",
+    "Social Service Programme Implementation",
+    "Solid-State Device Engineering",
+    "Sound Design and Creation",
+    "Sound Editing",
+    "Sound Mixing",
+    "Staff Continuous Learning",
+    "Standard Operating Procedures Development",
+    "Store Facilities and Housekeeping",
+    "Structural Testing",
+    "Supplier Performance",
+    "Supplier Performance and Management",
+    "Supply Chain Solutioning / Modelling / Planning / Strategising",
+    "Sustainability Assurance",
+    "Sustainability Management",
+    "Sustainable Farming Practice Implementation",
+    "Switchboard Operations Management",
+    "Tax Advisory",
+    "Tax Compliance",
+    "Tax Controversy Management",
+    "Tax Risk Management",
+    "Taxation Laws",
+    "Technical Report Writing",
+    "Technical Sales Support",
+    "Technical Sound Design",
+    "Test Planning",
+    "Time-Sensitive Cargo Delivery Management",
+    "Tools Development",
+    "Total Rewards Philosophy Development",
+    "Tour and Travel Coordination, Ticketing and Reservations Management",
+    "Trade Mark Application",
+    "Trainer and Assessor Development Management",
+    "Transportation and Handover of Patient",
+    "Underwriting Process",
+    "Underwriting Profitability and Efficiency Management",
+    "Vendor and Partnership Management",
+    "Vendor Management",
+    "Vision Mixing",
+    "Volunteer Retention and Engagement",
+    "Waste Material Loading and Unloading Administration",
+    "Website Performance Management",
+    "Work in Biosafety Level-3 laboratories",
+    "Workflow Management",
+    "Workplace Optimisation",
+    "Workplace Safety and Health Culture Management",
+    "Workplace Traffic Safety Management",
+    "Writing of Advertising Copy for Broadcast and Interactive Media",
+    "Youth Development",
+    "Youth Outreach",
+]
 
 
 INSTRUCTION_METHODS_LIST = [
