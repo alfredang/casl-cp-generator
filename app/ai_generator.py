@@ -476,7 +476,7 @@ def generate_minimum_entry_requirement(
 
 JOB_ROLES_PROMPT_TEMPLATE = """\
 You are an expert in Singapore's workforce development ecosystem. Generate \
-3 relevant job roles for the following course. The job role names must follow \
+10 relevant job roles for the following course. The job role names must follow \
 the naming conventions used on the SSG Skills Framework and MySkillsFuture \
 Jobs-Skills Portal.
 
@@ -486,26 +486,16 @@ Course Topics:
 {course_topics}
 
 Guidelines:
-- Generate exactly 3 job roles that are directly relevant to the course content
+- Generate exactly 10 job roles that are directly relevant to the course content
 - Each job role name MUST follow the official naming used on the SSG \
 Skills Framework / MySkillsFuture Jobs-Skills Portal
 - Use the standard format: Job Title / Designation (e.g., "Marketing Manager", \
 "Business Development Executive", "Digital Marketing Specialist")
-- For each job role, provide a brief 1-2 sentence description of how the \
-course is relevant to that role
-- Present in this format:
-  1. [Job Role Name]
-  [Brief description of relevance]
-
-  2. [Job Role Name]
-  [Brief description of relevance]
-
-  3. [Job Role Name]
-  [Brief description of relevance]
+- List all 10 job roles in a single comma-separated line
+- Do NOT include descriptions, explanations, or numbering
 - Do NOT use markdown formatting
-- IMPORTANT: The entire response must NOT exceed 2000 characters
 
-Respond with ONLY the numbered job roles and descriptions, nothing else."""
+Respond with ONLY the comma-separated job roles, nothing else."""
 
 
 def generate_job_roles(

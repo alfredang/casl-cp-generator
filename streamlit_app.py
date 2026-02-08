@@ -26,6 +26,7 @@ from app.ai_generator import (
 from app.extractor import extract_data
 from app.generator_docx import generate_docx
 from app.generator_lesson_plan import generate_lesson_plan
+from app.generator_lesson_plan_pdf import generate_lesson_plan_pdf
 
 st.set_page_config(page_title="CASL Course Document Generator", page_icon="📄", layout="wide")
 
@@ -170,7 +171,9 @@ if active_page == "Course Details":
         selected_assess_methods = st.multiselect(
             "Select Assessment Methods",
             options=ASSESSMENT_METHODS_LIST,
-            default=st.session_state.get("saved_assess_methods", []),
+            default=st.session_state.get("saved_assess_methods", [
+                "Written Exam", "Practical Exam",
+            ]),
         )
         submitted = st.form_submit_button("Save Course Details", type="primary", use_container_width=True)
 
@@ -691,7 +694,7 @@ elif active_page == "Job Roles":
     else:
         st.info(f"**Course:** {saved_title}")
         st.markdown(
-            "AI will generate 3 relevant job roles for the course, "
+            "AI will generate 10 relevant job roles for the course in comma-separated format, "
             "following SSG Skills Framework / MySkillsFuture Jobs-Skills Portal naming."
         )
 
@@ -700,7 +703,7 @@ elif active_page == "Job Roles":
             jr_prompt = st.text_area(
                 "Edit the prompt template used for generation. "
                 "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("jr_prompt", JOB_ROLES_PROMPT_TEMPLATE),
+                value=JOB_ROLES_PROMPT_TEMPLATE,
                 height=300,
                 key="jr_prompt_input",
             )
@@ -806,11 +809,16 @@ elif active_page == "Lesson Plan":
                     generate_lesson_plan(data, lp_path)
                     lp_bytes = lp_path.read_bytes()
 
+                    lp_pdf_path = Path(tmp_dir) / "lesson_plan.pdf"
+                    generate_lesson_plan_pdf(data, lp_pdf_path)
+                    lp_pdf_bytes = lp_pdf_path.read_bytes()
+
                 safe_name = data.particulars.course_title.replace(" ", "_")
 
                 st.session_state["generated"] = True
                 st.session_state["docx_bytes"] = docx_bytes
                 st.session_state["lp_bytes"] = lp_bytes
+                st.session_state["lp_pdf_bytes"] = lp_pdf_bytes
                 st.session_state["safe_name"] = safe_name
                 st.session_state["data"] = data
 
@@ -820,11 +828,12 @@ elif active_page == "Lesson Plan":
             safe_name = st.session_state["safe_name"]
             docx_bytes = st.session_state["docx_bytes"]
             lp_bytes = st.session_state["lp_bytes"]
+            lp_pdf_bytes = st.session_state["lp_pdf_bytes"]
 
             st.divider()
             st.subheader("Downloads")
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 st.download_button(
                     label="Download Course Document (.docx)",
@@ -839,6 +848,14 @@ elif active_page == "Lesson Plan":
                     data=lp_bytes,
                     file_name=f"{safe_name}_Lesson_Plan.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True,
+                )
+            with col3:
+                st.download_button(
+                    label="Download Lesson Plan (.pdf)",
+                    data=lp_pdf_bytes,
+                    file_name=f"{safe_name}_Lesson_Plan.pdf",
+                    mime="application/pdf",
                     use_container_width=True,
                 )
 
