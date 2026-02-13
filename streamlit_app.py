@@ -181,6 +181,7 @@ if active_page == "Course Details":
             min_value=0.5,
             value=default_days,
             step=0.5,
+            format="%.1f",
             key="gen_num_days",
             help="Typically 2-3 topics per day",
         )
