@@ -809,6 +809,373 @@ def generate_lesson_plan_content(
     )
 
 
+COURSE_TITLE_SUGGESTIONS_PROMPT_TEMPLATE = """\
+You are an expert course naming strategist for professional training and \
+continuing education programmes. Brainstorm 20 course titles for the \
+following course topic.
+
+Course Topic: {course}
+
+Guidelines:
+- Generate exactly 20 course titles
+- Titles should be appealing and engaging for potential learners
+- Titles should be optimized for search engine visibility (SEO-friendly)
+- Include relevant keywords that learners would search for
+- Mix different title styles: descriptive, action-oriented, outcome-focused, \
+and benefit-driven
+- Titles should be concise (3-10 words each)
+- Titles should sound professional and suitable for WSQ/CASL course listings
+- Number each title from 1 to 20
+- Do NOT use markdown formatting
+- Do NOT include descriptions or explanations — titles only
+
+Example (Course Topic: Digital Marketing):
+
+1. Digital Marketing Essentials
+2. Mastering Digital Marketing Strategies
+3. Digital Marketing for Business Growth
+4. Strategic Digital Marketing and Analytics
+5. Digital Marketing Campaign Management
+6. Online Marketing and Social Media Mastery
+7. Data-Driven Digital Marketing
+8. Digital Marketing in the Age of AI
+9. Fundamentals of Digital Marketing
+10. Digital Marketing and Brand Strategy
+11. Advanced Digital Marketing Techniques
+12. Digital Marketing for Professionals
+13. Effective Digital Marketing Campaigns
+14. Digital Marketing and Customer Engagement
+15. Modern Digital Marketing Practices
+16. Digital Marketing Strategy and Execution
+17. Applied Digital Marketing Skills
+18. Digital Marketing and E-Commerce
+19. Digital Marketing for Career Advancement
+20. Integrated Digital Marketing Solutions
+
+Respond with ONLY the numbered list of titles, nothing else."""
+
+
+def generate_course_title_suggestions(
+    course: str, prompt_template: str | None = None
+) -> str:
+    """Generate 20 course title suggestions using the Claude Agent SDK."""
+    template = prompt_template or COURSE_TITLE_SUGGESTIONS_PROMPT_TEMPLATE
+    return asyncio.run(_generate_async(template, course=course))
+
+
+LU_SEQUENCING_TYPES = [
+    "Step by Step",
+    "Simple to Complex",
+    "Part to Part to Part",
+    "Part to Whole",
+    "Spiral",
+]
+
+LU_SEQUENCING_STEP_BY_STEP_TEMPLATE = """\
+Ignore all the previous instructions and start from beginning.
+You are an experienced course developer and instructional designer.
+
+Course Title: {course}
+
+Learning Outcomes:
+{learning_outcomes}
+
+Course Outline:
+{course_outline}
+
+TASK:
+You will need to justify the rationale of sequencing using step-by-step \
+curriculum framework for this course - {course}
+Your justification based on the course outline and learning outcomes.
+
+OUTPUT FORMAT:
+Output your response in the following format with reference to the \
+learning outcomes and course outline. For example:
+
+For this course, the step-by-step sequencing is employed to scaffold \
+the learners' comprehension and application of video marketing strategies \
+using AI tools. The methodology is crucial as it systematically breaks \
+down the intricate facets of video marketing, inbound marketing strategies, \
+and AI tools into digestible units. This aids in gradually building the \
+learners' knowledge and skills from fundamental to more complex concepts, \
+ensuring a solid foundation before advancing to the next topic. The \
+progression is designed to foster a deeper understanding and the ability \
+to effectively apply the learned concepts in real-world marketing scenarios.
+
+LU1: Translating Strategy into Action and Fostering a Customer-Centric Culture
+LU1 lays the foundational knowledge by introducing learners to the \
+organization's inbound marketing strategies and how they align with the \
+overall marketing strategy. The facilitator will guide learners through \
+translating these strategies into actionable plans and understanding the \
+customer decision journey. This unit sets the stage for fostering a \
+customer-centric culture with a particular focus on adhering to \
+organizational policies and guidelines. The integration of AI tools in \
+these processes is introduced, giving learners a glimpse into the \
+technological aspects they will delve deeper into in subsequent units.
+
+LU2: Improving Inbound Marketing Strategies and Content Management
+Building on the foundational knowledge, LU2 dives into the practical \
+aspects of content creation and curation and how AI tools can be utilized \
+for strategy improvement. Learners will be led through exercises to \
+recommend improvements and manage content across various platforms. The \
+hands-on activities in this unit are designed to enhance learners' ability \
+to manage and optimize video content, crucial skills in video marketing \
+with AI tools.
+
+LU3: Leading Customer Decision Processes and Monitoring Inbound Marketing \
+Effectiveness
+LU3 escalates to a higher level of complexity where learners delve into \
+lead conversion processes, leading customers through decision processes, \
+and evaluating marketing strategy effectiveness. Under the guidance of the \
+facilitator, learners will engage in monitoring and reviewing inbound \
+marketing strategies, thereby aligning theoretical knowledge with practical \
+skills in a real-world context. The synthesis of previous knowledge with \
+advanced concepts in this unit culminates in a comprehensive understanding \
+of video marketing with AI tools, equipping learners with the requisite \
+skills to excel in the modern marketing landscape.
+
+Respond with ONLY the rationale text, nothing else."""
+
+LU_SEQUENCING_SIMPLE_TO_COMPLEX_TEMPLATE = """\
+Ignore all the previous instructions and start from beginning.
+You are an experienced course developer and instructional designer.
+
+Course Title: {course}
+
+Learning Outcomes:
+{learning_outcomes}
+
+Course Outline:
+{course_outline}
+
+TASK:
+You will need to justify the rationale of sequencing using simple-to-complex \
+curriculum framework for this course - {course}
+Your justification based on the course outline and learning outcomes.
+
+OUTPUT FORMAT:
+Output your response in the following format with reference to the \
+learning outcomes and course outline. Start with an introductory paragraph \
+explaining why simple-to-complex sequencing is appropriate for this course, \
+then provide a justification for each Learning Unit (LU) showing how it \
+progresses from simpler to more complex concepts.
+
+Respond with ONLY the rationale text, nothing else."""
+
+LU_SEQUENCING_PART_TO_PART_TEMPLATE = """\
+Ignore all the previous instructions and start from beginning.
+You are an experienced course developer and instructional designer.
+
+Course Title: {course}
+
+Learning Outcomes:
+{learning_outcomes}
+
+Course Outline:
+{course_outline}
+
+TASK:
+You will need to justify the rationale of sequencing using part-to-part-to-part \
+curriculum framework for this course - {course}
+Your justification based on the course outline and learning outcomes.
+
+OUTPUT FORMAT:
+Output your response in the following format with reference to the \
+learning outcomes and course outline. Start with an introductory paragraph \
+explaining why part-to-part-to-part sequencing is appropriate for this \
+course, then provide a justification for each Learning Unit (LU) showing \
+how each part builds upon and connects to the other parts as distinct but \
+interrelated components.
+
+Respond with ONLY the rationale text, nothing else."""
+
+LU_SEQUENCING_PART_TO_WHOLE_TEMPLATE = """\
+Ignore all the previous instructions and start from beginning.
+You are an experienced course developer and instructional designer.
+
+Course Title: {course}
+
+Learning Outcomes:
+{learning_outcomes}
+
+Course Outline:
+{course_outline}
+
+TASK:
+You will need to justify the rationale of sequencing using part-to-whole \
+framework for this course - {course}
+Your justification based on the course outline and learning outcomes.
+
+OUTPUT FORMAT:
+Output your response in the following format with reference to the \
+learning outcomes and course outline. For example:
+
+For this course, the part-to-whole sequencing is employed to scaffold \
+the learners' comprehension and application of video marketing strategies \
+using AI tools. The methodology is crucial as it systematically breaks \
+down the intricate facets of video marketing, inbound marketing strategies, \
+and AI tools into digestible units. This aids in gradually building the \
+learners' knowledge and skills from fundamental to more complex concepts, \
+ensuring a solid foundation before advancing to the next topic. The \
+progression is designed to foster a deeper understanding and the ability \
+to effectively apply the learned concepts in real-world marketing scenarios.
+
+LU1: Translating Strategy into Action and Fostering a Customer-Centric Culture
+LU1 lays the foundational knowledge by introducing learners to the \
+organization's inbound marketing strategies and how they align with the \
+overall marketing strategy. The facilitator will guide learners through \
+translating these strategies into actionable plans and understanding the \
+customer decision journey. This unit sets the stage for fostering a \
+customer-centric culture with a particular focus on adhering to \
+organizational policies and guidelines. The integration of AI tools in \
+these processes is introduced, giving learners a glimpse into the \
+technological aspects they will delve deeper into in subsequent units.
+
+LU2: Improving Inbound Marketing Strategies and Content Management
+Building on the foundational knowledge, LU2 dives into the practical \
+aspects of content creation and curation and how AI tools can be utilized \
+for strategy improvement. Learners will be led through exercises to \
+recommend improvements and manage content across various platforms. The \
+hands-on activities in this unit are designed to enhance learners' ability \
+to manage and optimize video content, crucial skills in video marketing \
+with AI tools.
+
+LU3: Leading Customer Decision Processes and Monitoring Inbound Marketing \
+Effectiveness
+LU3 escalates to a higher level of complexity where learners delve into \
+lead conversion processes, leading customers through decision processes, \
+and evaluating marketing strategy effectiveness. Under the guidance of the \
+facilitator, learners will engage in monitoring and reviewing inbound \
+marketing strategies, thereby aligning theoretical knowledge with practical \
+skills in a real-world context. The synthesis of previous knowledge with \
+advanced concepts in this unit culminates in a comprehensive understanding \
+of video marketing with AI tools, equipping learners with the requisite \
+skills to excel in the modern marketing landscape.
+
+Respond with ONLY the rationale text, nothing else."""
+
+LU_SEQUENCING_SPIRAL_TEMPLATE = """\
+Ignore all the previous instructions and start from beginning.
+You are an experienced course developer and instructional designer.
+
+Course Title: {course}
+
+Learning Outcomes:
+{learning_outcomes}
+
+Course Outline:
+{course_outline}
+
+TASK:
+You will need to justify the rationale of sequencing using spiral \
+curriculum framework for this course - {course}
+Your justification based on the course outline and learning outcomes.
+
+OUTPUT FORMAT:
+Output your response in the following format with reference to the \
+learning outcomes and course outline. Start with an introductory paragraph \
+explaining why spiral sequencing is appropriate for this course, then \
+provide a justification for each Learning Unit (LU) showing how key \
+concepts are revisited at increasing levels of depth and complexity \
+throughout the course.
+
+Respond with ONLY the rationale text, nothing else."""
+
+LU_SEQUENCING_TEMPLATES = {
+    "Step by Step": LU_SEQUENCING_STEP_BY_STEP_TEMPLATE,
+    "Simple to Complex": LU_SEQUENCING_SIMPLE_TO_COMPLEX_TEMPLATE,
+    "Part to Part to Part": LU_SEQUENCING_PART_TO_PART_TEMPLATE,
+    "Part to Whole": LU_SEQUENCING_PART_TO_WHOLE_TEMPLATE,
+    "Spiral": LU_SEQUENCING_SPIRAL_TEMPLATE,
+}
+
+
+def generate_lu_sequencing_rationale(
+    course: str,
+    learning_outcomes: str,
+    course_outline: str,
+    sequencing_type: str,
+    prompt_template: str | None = None,
+) -> str:
+    """Generate a rationale for LU sequencing using the Claude Agent SDK."""
+    template = prompt_template or LU_SEQUENCING_TEMPLATES.get(
+        sequencing_type, LU_SEQUENCING_STEP_BY_STEP_TEMPLATE
+    )
+    return asyncio.run(
+        _generate_async(
+            template,
+            course=course,
+            learning_outcomes=learning_outcomes,
+            course_outline=course_outline,
+        )
+    )
+
+
+COURSE_VALIDATION_PROMPT_TEMPLATE = """\
+As a director in a company, your role is to assist users in determining \
+the relevance and potential impact of various courses for specific industries.
+
+Course Title: {course}
+Industry: {industry}
+Learning Outcomes:
+{learning_outcomes}
+
+TASKS:
+You will generate FIVE distinct responses to two survey questions:
+1. What are the performance gaps in the industry (1-2 paragraphs are sufficed)
+2. Why you think this WSQ course will address the training needs for the \
+industry (1-2 paragraphs are sufficed)
+
+RULES:
+1. Do not mention learning outcomes in the response.
+2. Do not mention you are the director
+3. Do not mention the specific industry by name
+4. 1 or 2 paragraphs answers for each question in the survey
+5. Each paragraph is less than 120 words
+6. Only consider 1 or 2 of the learning outcomes for your response.
+7. The response need to related to the course, industry and learning outcomes
+8. For each set of response, you will generate the responses use different \
+learning outcomes and different style.
+
+OUTPUT FORMAT:
+For each set, use the following format:
+
+Set 1:
+1. What are the performance gaps in the industry (1-2 paragraphs are sufficed)
+
+(Enter your answer here)
+
+2. Why you think this WSQ course will address the training needs for the \
+industry (1-2 paragraphs are sufficed)
+
+(Enter your answer here)
+
+Set 2:
+...
+
+You will generate FIVE distinct sets of responses for the survey above.
+
+Respond with ONLY the five sets of responses, nothing else."""
+
+
+def generate_course_validation(
+    course: str,
+    industry: str,
+    learning_outcomes: str,
+    prompt_template: str | None = None,
+) -> str:
+    """Generate course validation survey responses using the Claude Agent SDK."""
+    template = prompt_template or COURSE_VALIDATION_PROMPT_TEMPLATE
+    return asyncio.run(
+        _generate_async(
+            template,
+            course=course,
+            industry=industry,
+            learning_outcomes=learning_outcomes,
+        )
+    )
+
+
 UNIQUE_SKILL_NAMES_LIST, SKILL_DESCRIPTIONS = load_skills_data()
 
 

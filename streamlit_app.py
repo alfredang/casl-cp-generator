@@ -10,11 +10,15 @@ from app.ai_generator import (
     ASSESSMENT_METHODS_LIST,
     BACKGROUND_PART_A_PROMPT_TEMPLATE,
     BACKGROUND_PART_B_PROMPT_TEMPLATE,
+    COURSE_TITLE_SUGGESTIONS_PROMPT_TEMPLATE,
     COURSE_TOPICS_PROMPT_TEMPLATE,
+    COURSE_VALIDATION_PROMPT_TEMPLATE,
     INSTRUCTION_METHOD_PROMPT_TEMPLATE,
     LEARNING_OUTCOME_PROMPT_TEMPLATE,
     LESSON_PLAN_PROMPT_TEMPLATE,
     INSTRUCTION_METHODS_LIST,
+    LU_SEQUENCING_TYPES,
+    LU_SEQUENCING_TEMPLATES,
     UNIQUE_SKILL_NAMES_LIST,
     SKILL_DESCRIPTIONS,
     JOB_ROLES_PROMPT_TEMPLATE,
@@ -24,10 +28,13 @@ from app.ai_generator import (
     generate_assessment_method,
     generate_background_part_a,
     generate_background_part_b,
+    generate_course_title_suggestions,
     generate_course_topics,
+    generate_course_validation,
     generate_instruction_method,
     generate_learning_outcomes,
     generate_lesson_plan_content,
+    generate_lu_sequencing_rationale,
     generate_job_roles,
     generate_minimum_entry_requirement,
     generate_what_youll_learn,
@@ -81,6 +88,14 @@ with st.sidebar:
                  type="primary" if st.session_state["active_page"] == "Assessment Methods" else "secondary"):
         st.session_state["active_page"] = "Assessment Methods"
         st.rerun()
+    if st.button("LU Sequencing Rationale", use_container_width=True,
+                 type="primary" if st.session_state["active_page"] == "LU Sequencing Rationale" else "secondary"):
+        st.session_state["active_page"] = "LU Sequencing Rationale"
+        st.rerun()
+    if st.button("Course Validation", use_container_width=True,
+                 type="primary" if st.session_state["active_page"] == "Course Validation" else "secondary"):
+        st.session_state["active_page"] = "Course Validation"
+        st.rerun()
 
     st.markdown("---")
     st.caption("SUBMIT CP")
@@ -130,6 +145,40 @@ if active_page == "Course Details":
         placeholder="e.g. Sales and Marketing Mastery",
         key="cd_course_title",
     )
+
+    # --- Suggest Course Titles with AI ---
+    with st.expander("Suggest Course Titles with AI", expanded=False):
+        st.markdown("Enter a course topic to brainstorm 20 appealing, SEO-friendly course titles.")
+
+        ct_prompt_template = st.session_state.get("ct_prompt", COURSE_TITLE_SUGGESTIONS_PROMPT_TEMPLATE)
+        if st.checkbox("Show Prompt Template", key="ct_show_prompt"):
+            ct_prompt = st.text_area(
+                "Edit the prompt template used for generation. "
+                "Use `{course}` as a placeholder for the course topic.",
+                value=ct_prompt_template,
+                height=300,
+                key="ct_prompt_input",
+            )
+            st.session_state["ct_prompt"] = ct_prompt
+
+        if st.button("Suggest Titles", type="primary", use_container_width=True, key="ct_suggest_btn"):
+            if not course_title:
+                st.warning("Please enter a course topic in the Course Title field first.")
+            else:
+                with st.spinner("Generating course title suggestions..."):
+                    try:
+                        result = generate_course_title_suggestions(
+                            course_title,
+                            prompt_template=st.session_state.get("ct_prompt"),
+                        )
+                        st.session_state["ct_suggestions"] = result
+                    except Exception as e:
+                        st.error(f"Failed to generate title suggestions: {e}")
+
+        if st.session_state.get("ct_suggestions"):
+            st.divider()
+            st.markdown("**Suggested Course Titles:**")
+            st.code(st.session_state["ct_suggestions"], language=None, wrap_lines=True)
 
     # --- CASL-specific fields ---
     if st.session_state.get("cp_mode") == "CASL":
@@ -385,40 +434,43 @@ elif active_page == "About This Course":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate a professional \"About the Course\" description "
-            "suitable for course listings."
+    st.markdown(
+        "AI will generate a professional \"About the Course\" description "
+        "suitable for course listings."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        about_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=st.session_state.get("about_prompt", ABOUT_COURSE_PROMPT_TEMPLATE),
+            height=300,
+            key="about_prompt_input",
+        )
+        st.session_state["about_prompt"] = about_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        generate_clicked = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="about_gen",
+        )
+    with col_regen:
+        regenerate_clicked = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="about_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            about_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("about_prompt", ABOUT_COURSE_PROMPT_TEMPLATE),
-                height=300,
-                key="about_prompt_input",
-            )
-            st.session_state["about_prompt"] = about_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            generate_clicked = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="about_gen",
-            )
-        with col_regen:
-            regenerate_clicked = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="about_regen",
-            )
-
-        # --- Generation Logic ---
-        if generate_clicked or regenerate_clicked:
+    # --- Generation Logic ---
+    if generate_clicked or regenerate_clicked:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating description..."):
                 try:
                     result = generate_about_course(
@@ -429,11 +481,11 @@ elif active_page == "About This Course":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("about_course_text"):
-            st.divider()
-            st.markdown("**Generated \"About the Course\" Text:**")
-            st.code(st.session_state["about_course_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("about_course_text"):
+        st.divider()
+        st.markdown("**Generated \"About the Course\" Text:**")
+        st.code(st.session_state["about_course_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: What You'll Learn
@@ -445,40 +497,43 @@ elif active_page == "What You'll Learn":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate learning outcomes describing the skills and knowledge "
-            "trainees will gain from the course."
+    st.markdown(
+        "AI will generate learning outcomes describing the skills and knowledge "
+        "trainees will gain from the course."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        wyl_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=st.session_state.get("wyl_prompt", WHAT_YOULL_LEARN_PROMPT_TEMPLATE),
+            height=300,
+            key="wyl_prompt_input",
+        )
+        st.session_state["wyl_prompt"] = wyl_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        wyl_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="wyl_gen",
+        )
+    with col_regen:
+        wyl_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="wyl_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            wyl_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("wyl_prompt", WHAT_YOULL_LEARN_PROMPT_TEMPLATE),
-                height=300,
-                key="wyl_prompt_input",
-            )
-            st.session_state["wyl_prompt"] = wyl_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            wyl_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="wyl_gen",
-            )
-        with col_regen:
-            wyl_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="wyl_regen",
-            )
-
-        # --- Generation Logic ---
-        if wyl_generate or wyl_regenerate:
+    # --- Generation Logic ---
+    if wyl_generate or wyl_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating learning outcomes..."):
                 try:
                     result = generate_what_youll_learn(
@@ -489,11 +544,11 @@ elif active_page == "What You'll Learn":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("wyl_text"):
-            st.divider()
-            st.markdown("**Generated \"What You'll Learn\" Text:**")
-            st.code(st.session_state["wyl_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("wyl_text"):
+        st.divider()
+        st.markdown("**Generated \"What You'll Learn\" Text:**")
+        st.code(st.session_state["wyl_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Background Part A
@@ -505,40 +560,43 @@ elif active_page == "Background Part A":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate a background section covering targeted sector(s), "
-            "target audience / job role(s), and needs for the training."
+    st.markdown(
+        "AI will generate a background section covering targeted sector(s), "
+        "target audience / job role(s), and needs for the training."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        bg_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=st.session_state.get("bg_prompt", BACKGROUND_PART_A_PROMPT_TEMPLATE),
+            height=300,
+            key="bg_prompt_input",
+        )
+        st.session_state["bg_prompt"] = bg_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        bg_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="bg_gen",
+        )
+    with col_regen:
+        bg_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="bg_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            bg_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("bg_prompt", BACKGROUND_PART_A_PROMPT_TEMPLATE),
-                height=300,
-                key="bg_prompt_input",
-            )
-            st.session_state["bg_prompt"] = bg_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            bg_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="bg_gen",
-            )
-        with col_regen:
-            bg_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="bg_regen",
-            )
-
-        # --- Generation Logic ---
-        if bg_generate or bg_regenerate:
+    # --- Generation Logic ---
+    if bg_generate or bg_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating background section..."):
                 try:
                     result = generate_background_part_a(
@@ -549,11 +607,11 @@ elif active_page == "Background Part A":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("bg_text"):
-            st.divider()
-            st.markdown("**Generated \"Background Part A\" Text:**")
-            st.code(st.session_state["bg_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("bg_text"):
+        st.divider()
+        st.markdown("**Generated \"Background Part A\" Text:**")
+        st.code(st.session_state["bg_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Background Part B
@@ -565,40 +623,43 @@ elif active_page == "Background Part B":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate a section covering performance gaps the course addresses, "
-            "how the gaps were identified, and how learners will benefit post-training."
+    st.markdown(
+        "AI will generate a section covering performance gaps the course addresses, "
+        "how the gaps were identified, and how learners will benefit post-training."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        bgb_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=st.session_state.get("bgb_prompt", BACKGROUND_PART_B_PROMPT_TEMPLATE),
+            height=300,
+            key="bgb_prompt_input",
+        )
+        st.session_state["bgb_prompt"] = bgb_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        bgb_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="bgb_gen",
+        )
+    with col_regen:
+        bgb_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="bgb_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            bgb_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("bgb_prompt", BACKGROUND_PART_B_PROMPT_TEMPLATE),
-                height=300,
-                key="bgb_prompt_input",
-            )
-            st.session_state["bgb_prompt"] = bgb_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            bgb_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="bgb_gen",
-            )
-        with col_regen:
-            bgb_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="bgb_regen",
-            )
-
-        # --- Generation Logic ---
-        if bgb_generate or bgb_regenerate:
+    # --- Generation Logic ---
+    if bgb_generate or bgb_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating performance gaps section..."):
                 try:
                     result = generate_background_part_b(
@@ -609,11 +670,11 @@ elif active_page == "Background Part B":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("bgb_text"):
-            st.divider()
-            st.markdown("**Generated \"Background Part B\" Text:**")
-            st.code(st.session_state["bgb_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("bgb_text"):
+        st.divider()
+        st.markdown("**Generated \"Background Part B\" Text:**")
+        st.code(st.session_state["bgb_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Learning Outcomes
@@ -625,40 +686,43 @@ elif active_page == "Learning Outcomes":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate learning outcomes for each topic. "
-            "Each outcome starts with an action verb and is under 25 words."
+    st.markdown(
+        "AI will generate learning outcomes for each topic. "
+        "Each outcome starts with an action verb and is under 25 words."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        lo_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=st.session_state.get("lo_prompt", LEARNING_OUTCOME_PROMPT_TEMPLATE),
+            height=300,
+            key="lo_prompt_input",
+        )
+        st.session_state["lo_prompt"] = lo_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        lo_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="lo_gen",
+        )
+    with col_regen:
+        lo_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="lo_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            lo_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=st.session_state.get("lo_prompt", LEARNING_OUTCOME_PROMPT_TEMPLATE),
-                height=300,
-                key="lo_prompt_input",
-            )
-            st.session_state["lo_prompt"] = lo_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            lo_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="lo_gen",
-            )
-        with col_regen:
-            lo_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="lo_regen",
-            )
-
-        # --- Generation Logic ---
-        if lo_generate or lo_regenerate:
+    # --- Generation Logic ---
+    if lo_generate or lo_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating learning outcomes..."):
                 try:
                     result = generate_learning_outcomes(
@@ -669,11 +733,11 @@ elif active_page == "Learning Outcomes":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("lo_text"):
-            st.divider()
-            st.markdown("**Generated Learning Outcomes:**")
-            st.code(st.session_state["lo_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("lo_text"):
+        st.divider()
+        st.markdown("**Generated Learning Outcomes:**")
+        st.code(st.session_state["lo_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Instructional Methods
@@ -681,68 +745,70 @@ elif active_page == "Learning Outcomes":
 elif active_page == "Instructional Methods":
     st.header("Instructional Methods")
 
+    saved_im = st.session_state.get("saved_instr_methods", [])
     if not has_course_details:
         st.warning("Please enter course details first on the **Course Details** page.")
+    elif not saved_im:
+        st.warning("Please select instruction methods on the **Course Details** page first.")
     else:
-        saved_im = st.session_state.get("saved_instr_methods", [])
-        if not saved_im:
-            st.warning("Please select instruction methods on the **Course Details** page first.")
+        st.info(f"**Course:** {saved_title}")
+        st.markdown(f"**Selected Methods:** {', '.join(saved_im)}")
+    st.markdown(
+        "AI will generate an elaboration on the appropriateness of each "
+        "selected instructional method for achieving the course learning outcomes."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        im_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}`, `{course_topics}`, and `{method_name}` as placeholders.",
+            value=st.session_state.get("im_prompt", INSTRUCTION_METHOD_PROMPT_TEMPLATE),
+            height=300,
+            key="im_prompt_input",
+        )
+        st.session_state["im_prompt"] = im_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        im_generate = st.button(
+            "Generate All",
+            type="primary",
+            use_container_width=True,
+            key="im_gen",
+        )
+    with col_regen:
+        im_regenerate = st.button(
+            "Regenerate All",
+            use_container_width=True,
+            key="im_regen",
+        )
+
+    # --- Generation Logic ---
+    if im_generate or im_regenerate:
+        if not has_course_details or not saved_im:
+            st.warning("Please enter course details and select instruction methods first.")
         else:
-            st.info(f"**Course:** {saved_title}")
-            st.markdown(
-                "AI will generate an elaboration on the appropriateness of each "
-                "selected instructional method for achieving the course learning outcomes."
-            )
-            st.markdown(f"**Selected Methods:** {', '.join(saved_im)}")
+            results = {}
+            for method in saved_im:
+                with st.spinner(f"Generating for {method}..."):
+                    try:
+                        result = generate_instruction_method(
+                            saved_title, saved_topics, method,
+                            prompt_template=st.session_state.get("im_prompt"),
+                        )
+                        results[method] = result
+                    except Exception as e:
+                        results[method] = f"Error: {e}"
+            st.session_state["im_results"] = results
 
-            # --- Editable prompt template ---
-            with st.expander("Prompt Template", expanded=False):
-                im_prompt = st.text_area(
-                    "Edit the prompt template used for generation. "
-                    "Use `{course_title}`, `{course_topics}`, and `{method_name}` as placeholders.",
-                    value=st.session_state.get("im_prompt", INSTRUCTION_METHOD_PROMPT_TEMPLATE),
-                    height=300,
-                    key="im_prompt_input",
-                )
-                st.session_state["im_prompt"] = im_prompt
-
-            # --- Generate Buttons ---
-            col_gen, col_regen = st.columns([1, 1])
-            with col_gen:
-                im_generate = st.button(
-                    "Generate All",
-                    type="primary",
-                    use_container_width=True,
-                    key="im_gen",
-                )
-            with col_regen:
-                im_regenerate = st.button(
-                    "Regenerate All",
-                    use_container_width=True,
-                    key="im_regen",
-                )
-
-            # --- Generation Logic ---
-            if im_generate or im_regenerate:
-                results = {}
-                for method in saved_im:
-                    with st.spinner(f"Generating for {method}..."):
-                        try:
-                            result = generate_instruction_method(
-                                saved_title, saved_topics, method,
-                                prompt_template=st.session_state.get("im_prompt"),
-                            )
-                            results[method] = result
-                        except Exception as e:
-                            results[method] = f"Error: {e}"
-                st.session_state["im_results"] = results
-
-            # --- Display Results ---
-            if st.session_state.get("im_results"):
-                st.divider()
-                for method, text in st.session_state["im_results"].items():
-                    st.markdown(f"### {method}")
-                    st.code(text, language=None, wrap_lines=True)
+    # --- Display Results ---
+    if st.session_state.get("im_results"):
+        st.divider()
+        for method, text in st.session_state["im_results"].items():
+            st.markdown(f"### {method}")
+            st.code(text, language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Assessment Methods
@@ -750,70 +816,72 @@ elif active_page == "Instructional Methods":
 elif active_page == "Assessment Methods":
     st.header("Assessment Methods")
 
+    saved_am = st.session_state.get("saved_assess_methods", [])
     if not has_course_details:
         st.warning("Please enter course details first on the **Course Details** page.")
+    elif not saved_am and st.session_state.get("saved_num_assess_methods", 1) == 0:
+        st.info("No assessment methods configured for this CASL course.")
+    elif not saved_am:
+        st.warning("Please select assessment methods on the **Course Details** page first.")
     else:
-        saved_am = st.session_state.get("saved_assess_methods", [])
-        if not saved_am and st.session_state.get("saved_num_assess_methods", 1) == 0:
-            st.info("No assessment methods configured for this CASL course.")
-        elif not saved_am:
-            st.warning("Please select assessment methods on the **Course Details** page first.")
+        st.info(f"**Course:** {saved_title}")
+        st.markdown(f"**Selected Methods:** {', '.join(saved_am)}")
+    st.markdown(
+        "AI will generate an elaboration on the appropriateness of each "
+        "selected assessment method for this course."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        am_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}`, `{course_topics}`, and `{method_name}` as placeholders.",
+            value=st.session_state.get("am_prompt", ASSESSMENT_METHOD_PROMPT_TEMPLATE),
+            height=300,
+            key="am_prompt_input",
+        )
+        st.session_state["am_prompt"] = am_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        am_generate = st.button(
+            "Generate All",
+            type="primary",
+            use_container_width=True,
+            key="am_gen",
+        )
+    with col_regen:
+        am_regenerate = st.button(
+            "Regenerate All",
+            use_container_width=True,
+            key="am_regen",
+        )
+
+    # --- Generation Logic ---
+    if am_generate or am_regenerate:
+        if not has_course_details or not saved_am:
+            st.warning("Please enter course details and select assessment methods first.")
         else:
-            st.info(f"**Course:** {saved_title}")
-            st.markdown(
-                "AI will generate an elaboration on the appropriateness of each "
-                "selected assessment method for this course."
-            )
-            st.markdown(f"**Selected Methods:** {', '.join(saved_am)}")
+            results = {}
+            for method in saved_am:
+                with st.spinner(f"Generating for {method}..."):
+                    try:
+                        result = generate_assessment_method(
+                            saved_title, saved_topics, method,
+                            prompt_template=st.session_state.get("am_prompt"),
+                        )
+                        results[method] = result
+                    except Exception as e:
+                        results[method] = f"Error: {e}"
+            st.session_state["am_results"] = results
 
-            # --- Editable prompt template ---
-            with st.expander("Prompt Template", expanded=False):
-                am_prompt = st.text_area(
-                    "Edit the prompt template used for generation. "
-                    "Use `{course_title}`, `{course_topics}`, and `{method_name}` as placeholders.",
-                    value=st.session_state.get("am_prompt", ASSESSMENT_METHOD_PROMPT_TEMPLATE),
-                    height=300,
-                    key="am_prompt_input",
-                )
-                st.session_state["am_prompt"] = am_prompt
-
-            # --- Generate Buttons ---
-            col_gen, col_regen = st.columns([1, 1])
-            with col_gen:
-                am_generate = st.button(
-                    "Generate All",
-                    type="primary",
-                    use_container_width=True,
-                    key="am_gen",
-                )
-            with col_regen:
-                am_regenerate = st.button(
-                    "Regenerate All",
-                    use_container_width=True,
-                    key="am_regen",
-                )
-
-            # --- Generation Logic ---
-            if am_generate or am_regenerate:
-                results = {}
-                for method in saved_am:
-                    with st.spinner(f"Generating for {method}..."):
-                        try:
-                            result = generate_assessment_method(
-                                saved_title, saved_topics, method,
-                                prompt_template=st.session_state.get("am_prompt"),
-                            )
-                            results[method] = result
-                        except Exception as e:
-                            results[method] = f"Error: {e}"
-                st.session_state["am_results"] = results
-
-            # --- Display Results ---
-            if st.session_state.get("am_results"):
-                st.divider()
-                for method, text in st.session_state["am_results"].items():
-                    st.markdown(f"### {method}")
-                    st.code(text, language=None, wrap_lines=True)
+    # --- Display Results ---
+    if st.session_state.get("am_results"):
+        st.divider()
+        for method, text in st.session_state["am_results"].items():
+            st.markdown(f"### {method}")
+            st.code(text, language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Min Entry Requirements
@@ -825,48 +893,51 @@ elif active_page == "Min Entry Requirements":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate minimum entry requirements covering knowledge and skills, "
-            "attitude, experience, and target age group."
+    st.markdown(
+        "AI will generate minimum entry requirements covering knowledge and skills, "
+        "attitude, experience, and target age group."
+    )
+
+    mer_special_req = st.text_area(
+        "Special Requirements (optional)",
+        value="",
+        height=80,
+        key="mer_special_req",
+        placeholder="e.g. Participants must have basic IT skills, minimum diploma in relevant field, etc.",
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        mer_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}`, `{course_topics}`, and `{special_requirements}` as placeholders.",
+            value=st.session_state.get("mer_prompt", MINIMUM_ENTRY_REQUIREMENT_PROMPT_TEMPLATE),
+            height=300,
+            key="mer_prompt_input",
+        )
+        st.session_state["mer_prompt"] = mer_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        mer_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="mer_gen",
+        )
+    with col_regen:
+        mer_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="mer_regen",
         )
 
-        mer_special_req = st.text_area(
-            "Special Requirements (optional)",
-            value="",
-            height=80,
-            key="mer_special_req",
-            placeholder="e.g. Participants must have basic IT skills, minimum diploma in relevant field, etc.",
-        )
-
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            mer_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}`, `{course_topics}`, and `{special_requirements}` as placeholders.",
-                value=st.session_state.get("mer_prompt", MINIMUM_ENTRY_REQUIREMENT_PROMPT_TEMPLATE),
-                height=300,
-                key="mer_prompt_input",
-            )
-            st.session_state["mer_prompt"] = mer_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            mer_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="mer_gen",
-            )
-        with col_regen:
-            mer_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="mer_regen",
-            )
-
-        # --- Generation Logic ---
-        if mer_generate or mer_regenerate:
+    # --- Generation Logic ---
+    if mer_generate or mer_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating entry requirements..."):
                 try:
                     result = generate_minimum_entry_requirement(
@@ -878,11 +949,11 @@ elif active_page == "Min Entry Requirements":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("mer_text"):
-            st.divider()
-            st.markdown("**Generated \"Minimum Entry Requirement\" Text:**")
-            st.code(st.session_state["mer_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("mer_text"):
+        st.divider()
+        st.markdown("**Generated \"Minimum Entry Requirement\" Text:**")
+        st.code(st.session_state["mer_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Job Roles
@@ -894,40 +965,43 @@ elif active_page == "Job Roles":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "AI will generate 10 relevant job roles for the course in comma-separated format, "
-            "following SSG Skills Framework / MySkillsFuture Jobs-Skills Portal naming."
+    st.markdown(
+        "AI will generate 10 relevant job roles for the course in comma-separated format, "
+        "following SSG Skills Framework / MySkillsFuture Jobs-Skills Portal naming."
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        jr_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course_title}` and `{course_topics}` as placeholders.",
+            value=JOB_ROLES_PROMPT_TEMPLATE,
+            height=300,
+            key="jr_prompt_input",
+        )
+        st.session_state["jr_prompt"] = jr_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        jr_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="jr_gen",
+        )
+    with col_regen:
+        jr_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="jr_regen",
         )
 
-        # --- Editable prompt template ---
-        with st.expander("Prompt Template", expanded=False):
-            jr_prompt = st.text_area(
-                "Edit the prompt template used for generation. "
-                "Use `{course_title}` and `{course_topics}` as placeholders.",
-                value=JOB_ROLES_PROMPT_TEMPLATE,
-                height=300,
-                key="jr_prompt_input",
-            )
-            st.session_state["jr_prompt"] = jr_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            jr_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="jr_gen",
-            )
-        with col_regen:
-            jr_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="jr_regen",
-            )
-
-        # --- Generation Logic ---
-        if jr_generate or jr_regenerate:
+    # --- Generation Logic ---
+    if jr_generate or jr_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
             with st.spinner("Generating job roles..."):
                 try:
                     result = generate_job_roles(
@@ -938,11 +1012,11 @@ elif active_page == "Job Roles":
                 except Exception as e:
                     st.error(f"Failed to generate text: {e}")
 
-        # --- Display Result ---
-        if st.session_state.get("jr_text"):
-            st.divider()
-            st.markdown("**Generated Job Roles:**")
-            st.code(st.session_state["jr_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("jr_text"):
+        st.divider()
+        st.markdown("**Generated Job Roles:**")
+        st.code(st.session_state["jr_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Course Outline
@@ -955,15 +1029,16 @@ elif active_page == "Course Outline":
     else:
         st.info(f"**Course:** {saved_title}")
 
-        saved_duration = st.session_state.get("saved_course_duration", 16)
-        saved_num_topics = st.session_state.get("saved_num_topics", 4)
-        duration_per_topic = saved_duration * 60 / saved_num_topics
-        saved_im = st.session_state.get("saved_instr_methods", [])
+    if st.button("Generate", type="primary", use_container_width=True, key="co_gen"):
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
+            saved_duration = st.session_state.get("saved_course_duration", 16)
+            saved_num_topics = st.session_state.get("saved_num_topics", 4)
+            duration_per_topic = saved_duration * 60 / saved_num_topics
+            saved_im = st.session_state.get("saved_instr_methods", [])
+            main_topics = re.findall(r"^##\s*Topic\s*\d+:\s*(.+)$", saved_topics, re.MULTILINE)
 
-        # Extract topic names from markdown-formatted course topics
-        main_topics = re.findall(r"^##\s*Topic\s*\d+:\s*(.+)$", saved_topics, re.MULTILINE)
-
-        if st.button("Generate", type="primary", use_container_width=True, key="co_gen"):
             info_lines = []
             if main_topics:
                 info_lines.append("(1) The list of topics covered in this course")
@@ -983,10 +1058,10 @@ elif active_page == "Course Outline":
 
             st.session_state["co_text"] = "\n".join(info_lines)
 
-        # --- Display Result ---
-        if st.session_state.get("co_text"):
-            st.divider()
-            st.code(st.session_state["co_text"], language=None, wrap_lines=True)
+    # --- Display Result ---
+    if st.session_state.get("co_text"):
+        st.divider()
+        st.code(st.session_state["co_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: Lesson Plan
@@ -998,50 +1073,52 @@ elif active_page == "Lesson Plan":
         st.warning("Please enter course details first on the **Course Details** page.")
     else:
         st.info(f"**Course:** {saved_title}")
-        st.markdown(
-            "Generate a lesson plan from your course details. "
-            "Downloads are available as Word (.docx) and PDF (.pdf)."
+    st.markdown(
+        "Generate a lesson plan from your course details. "
+        "Downloads are available as Word (.docx) and PDF (.pdf)."
+    )
+
+    # --- AI prompt template ---
+    with st.expander("AI Prompt Template", expanded=False):
+        lp_prompt = st.text_area(
+            "Edit the prompt template used for AI generation.",
+            value=st.session_state.get("lp_prompt", LESSON_PLAN_PROMPT_TEMPLATE),
+            height=300,
+            key="lp_prompt_input",
+        )
+        st.session_state["lp_prompt"] = lp_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        lp_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="lp_gen",
+        )
+    with col_regen:
+        lp_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="lp_regen",
         )
 
-        # --- Collect course details ---
-        lp_duration = st.session_state.get("saved_course_duration", 16)
-        lp_instr_hrs = st.session_state.get("saved_instructional_duration", 14)
-        lp_assess_hrs = st.session_state.get("saved_assessment_duration", 2)
-        lp_num_topics = st.session_state.get("saved_num_topics", 4)
-        lp_im = st.session_state.get("saved_instr_methods", [])
-        lp_am = st.session_state.get("saved_assess_methods", [])
+    # --- Build schedule & generate documents ---
+    if lp_generate or lp_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        else:
+            # --- Collect course details ---
+            lp_duration = st.session_state.get("saved_course_duration", 16)
+            lp_instr_hrs = st.session_state.get("saved_instructional_duration", 14)
+            lp_assess_hrs = st.session_state.get("saved_assessment_duration", 2)
+            lp_num_topics = st.session_state.get("saved_num_topics", 4)
+            lp_im = st.session_state.get("saved_instr_methods", [])
+            lp_am = st.session_state.get("saved_assess_methods", [])
 
-        main_topics = re.findall(r"^##\s*Topic\s*\d+:\s*(.+)$", saved_topics, re.MULTILINE)
-        num_topics = len(main_topics) if main_topics else lp_num_topics
-
-        # --- AI prompt template ---
-        with st.expander("AI Prompt Template", expanded=False):
-            lp_prompt = st.text_area(
-                "Edit the prompt template used for AI generation.",
-                value=st.session_state.get("lp_prompt", LESSON_PLAN_PROMPT_TEMPLATE),
-                height=300,
-                key="lp_prompt_input",
-            )
-            st.session_state["lp_prompt"] = lp_prompt
-
-        # --- Generate Buttons ---
-        col_gen, col_regen = st.columns([1, 1])
-        with col_gen:
-            lp_generate = st.button(
-                "Generate",
-                type="primary",
-                use_container_width=True,
-                key="lp_gen",
-            )
-        with col_regen:
-            lp_regenerate = st.button(
-                "Regenerate",
-                use_container_width=True,
-                key="lp_regen",
-            )
-
-        # --- Build schedule & generate documents ---
-        if lp_generate or lp_regenerate:
+            main_topics = re.findall(r"^##\s*Topic\s*\d+:\s*(.+)$", saved_topics, re.MULTILINE)
+            num_topics = len(main_topics) if main_topics else lp_num_topics
             # --- Build schedule from course details ---
             def _fmt_12h(mins: int) -> str:
                 h, m = divmod(mins, 60)
@@ -1236,34 +1313,34 @@ elif active_page == "Lesson Plan":
                 except Exception as e:
                     st.error(f"Failed to generate AI lesson plan: {e}")
 
-        # --- Downloads ---
-        if st.session_state.get("lp_generated"):
-            st.divider()
-            st.subheader("Downloads")
-            safe_name = saved_title.replace(" ", "_")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="Download Lesson Plan (.docx)",
-                    data=st.session_state["lp_docx_bytes"],
-                    file_name=f"{safe_name}_Lesson_Plan.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True,
-                )
-            with col2:
-                st.download_button(
-                    label="Download Lesson Plan (.pdf)",
-                    data=st.session_state["lp_pdf_bytes"],
-                    file_name=f"{safe_name}_Lesson_Plan.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
+    # --- Downloads ---
+    if st.session_state.get("lp_generated"):
+        st.divider()
+        st.subheader("Downloads")
+        safe_name = saved_title.replace(" ", "_") if saved_title else "Lesson_Plan"
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="Download Lesson Plan (.docx)",
+                data=st.session_state["lp_docx_bytes"],
+                file_name=f"{safe_name}_Lesson_Plan.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+            )
+        with col2:
+            st.download_button(
+                label="Download Lesson Plan (.pdf)",
+                data=st.session_state["lp_pdf_bytes"],
+                file_name=f"{safe_name}_Lesson_Plan.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
-        # --- AI-Generated Text ---
-        if st.session_state.get("lp_text"):
-            st.divider()
-            st.markdown("**AI-Generated Lesson Plan:**")
-            st.code(st.session_state["lp_text"], language=None, wrap_lines=True)
+    # --- AI-Generated Text ---
+    if st.session_state.get("lp_text"):
+        st.divider()
+        st.markdown("**AI-Generated Lesson Plan:**")
+        st.code(st.session_state["lp_text"], language=None, wrap_lines=True)
 
 # ============================================================
 # PAGE: CP Quality Audit
@@ -1522,3 +1599,189 @@ elif active_page == "CP Quality Audit":
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         use_container_width=True,
                     )
+
+# ============================================================
+# PAGE: LU Sequencing Rationale
+# ============================================================
+elif active_page == "LU Sequencing Rationale":
+    st.header("Rationale of LU Sequencing")
+
+    if not has_course_details:
+        st.warning("Please enter course details first on the **Course Details** page.")
+    else:
+        st.info(f"**Course:** {saved_title}")
+    st.markdown(
+        "AI will generate a justification for the rationale of Learning Unit (LU) "
+        "sequencing based on your chosen curriculum framework."
+    )
+
+    # --- Sequencing Type Selection ---
+    sequencing_type = st.selectbox(
+        "Sequencing Framework",
+        options=LU_SEQUENCING_TYPES,
+        index=0,
+        key="lu_seq_type",
+    )
+
+    # --- Learning Outcomes input ---
+    lo_default = st.session_state.get("lo_text", "")
+    lu_learning_outcomes = st.text_area(
+        "Learning Outcomes",
+        value=lo_default,
+        height=200,
+        key="lu_seq_lo",
+        placeholder="Paste your learning outcomes here (e.g. from the Learning Outcomes page).",
+    )
+
+    # --- Course Outline input ---
+    co_default = st.session_state.get("co_text", "")
+    lu_course_outline = st.text_area(
+        "Course Outline",
+        value=co_default,
+        height=200,
+        key="lu_seq_co",
+        placeholder="Paste your course outline here (e.g. from the Course Outline page).",
+    )
+
+    # --- Editable prompt template ---
+    current_template = LU_SEQUENCING_TEMPLATES.get(sequencing_type, "")
+    with st.expander("Prompt Template", expanded=False):
+        lu_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course}`, `{learning_outcomes}`, and `{course_outline}` as placeholders.",
+            value=st.session_state.get(f"lu_seq_prompt_{sequencing_type}", current_template),
+            height=300,
+            key="lu_seq_prompt_input",
+        )
+        st.session_state[f"lu_seq_prompt_{sequencing_type}"] = lu_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        lu_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="lu_seq_gen",
+        )
+    with col_regen:
+        lu_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="lu_seq_regen",
+        )
+
+    # --- Generation Logic ---
+    if lu_generate or lu_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        elif not lu_learning_outcomes.strip():
+            st.warning("Please enter the learning outcomes.")
+        elif not lu_course_outline.strip():
+            st.warning("Please enter the course outline.")
+        else:
+            with st.spinner(f"Generating {sequencing_type} sequencing rationale..."):
+                try:
+                    result = generate_lu_sequencing_rationale(
+                        course=saved_title,
+                        learning_outcomes=lu_learning_outcomes,
+                        course_outline=lu_course_outline,
+                        sequencing_type=sequencing_type,
+                        prompt_template=st.session_state.get(f"lu_seq_prompt_{sequencing_type}"),
+                    )
+                    st.session_state["lu_seq_text"] = result
+                except Exception as e:
+                    st.error(f"Failed to generate rationale: {e}")
+
+    # --- Display Result ---
+    if st.session_state.get("lu_seq_text"):
+        st.divider()
+        st.markdown(f"**Generated Rationale ({st.session_state.get('lu_seq_type', 'Step by Step')} Sequencing):**")
+        st.code(st.session_state["lu_seq_text"], language=None, wrap_lines=True)
+
+# ============================================================
+# PAGE: Course Validation
+# ============================================================
+elif active_page == "Course Validation":
+    st.header("Course Validation")
+
+    if not has_course_details:
+        st.warning("Please enter course details first on the **Course Details** page.")
+    else:
+        st.info(f"**Course:** {saved_title}")
+    st.markdown(
+        "AI will generate 5 distinct sets of survey responses covering "
+        "performance gaps and how this WSQ course addresses training needs "
+        "for your chosen industry."
+    )
+
+    # --- Industry input ---
+    cv_industry = st.text_input(
+        "Industry",
+        placeholder="e.g. Healthcare, Logistics, Financial Services, Retail",
+        key="cv_industry",
+    )
+
+    # --- Learning Outcomes input ---
+    lo_default = st.session_state.get("lo_text", "")
+    cv_learning_outcomes = st.text_area(
+        "Learning Outcomes",
+        value=lo_default,
+        height=200,
+        key="cv_lo",
+        placeholder="Paste your learning outcomes here (e.g. from the Learning Outcomes page).",
+    )
+
+    # --- Editable prompt template ---
+    with st.expander("Prompt Template", expanded=False):
+        cv_prompt = st.text_area(
+            "Edit the prompt template used for generation. "
+            "Use `{course}`, `{industry}`, and `{learning_outcomes}` as placeholders.",
+            value=st.session_state.get("cv_prompt", COURSE_VALIDATION_PROMPT_TEMPLATE),
+            height=300,
+            key="cv_prompt_input",
+        )
+        st.session_state["cv_prompt"] = cv_prompt
+
+    # --- Generate Buttons ---
+    col_gen, col_regen = st.columns([1, 1])
+    with col_gen:
+        cv_generate = st.button(
+            "Generate",
+            type="primary",
+            use_container_width=True,
+            key="cv_gen",
+        )
+    with col_regen:
+        cv_regenerate = st.button(
+            "Regenerate",
+            use_container_width=True,
+            key="cv_regen",
+        )
+
+    # --- Generation Logic ---
+    if cv_generate or cv_regenerate:
+        if not has_course_details:
+            st.warning("Please enter course details first on the **Course Details** page.")
+        elif not cv_industry.strip():
+            st.warning("Please enter the industry.")
+        elif not cv_learning_outcomes.strip():
+            st.warning("Please enter the learning outcomes.")
+        else:
+            with st.spinner("Generating course validation responses..."):
+                try:
+                    result = generate_course_validation(
+                        course=saved_title,
+                        industry=cv_industry,
+                        learning_outcomes=cv_learning_outcomes,
+                        prompt_template=st.session_state.get("cv_prompt"),
+                    )
+                    st.session_state["cv_text"] = result
+                except Exception as e:
+                    st.error(f"Failed to generate validation: {e}")
+
+    # --- Display Result ---
+    if st.session_state.get("cv_text"):
+        st.divider()
+        st.markdown("**Generated Course Validation Responses:**")
+        st.code(st.session_state["cv_text"], language=None, wrap_lines=True)

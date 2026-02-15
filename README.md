@@ -10,7 +10,7 @@ Built for training providers working with the WSQ and CASL (Course Accreditation
 
 ### Prepare CP (AI-Powered Content Generation)
 
-Enter a course title and topics, then generate professional content for each CP section:
+Enter a course title and topics, then generate professional content for each CP section. All pages show prompt templates and inputs upfront — generation requires saved course details.
 
 - **About This Course** -- Professional course description (80-120 words)
 - **What You'll Learn** -- Bullet-point learning outcomes
@@ -19,6 +19,8 @@ Enter a course title and topics, then generate professional content for each CP 
 - **Learning Outcomes** -- One learning outcome per topic (T1/LO1 format)
 - **Instructional Methods** -- Elaboration on appropriateness of each selected method
 - **Assessment Methods** -- Elaboration on appropriateness of each selected assessment
+- **LU Sequencing Rationale** -- Justification for Learning Unit sequencing using 5 curriculum frameworks (Step by Step, Simple to Complex, Part to Part, Part to Whole, Spiral)
+- **Course Validation** -- 5 distinct survey response sets covering performance gaps and training needs for a chosen industry
 
 ### Submit CP
 
@@ -37,6 +39,7 @@ Configure course parameters used across all sections:
 - CASL mode allows 0 assessment methods/duration
 - Select instructional methods (19 options) and assessment methods (11 options)
 - AI-powered course topic generation with configurable number of days, special requirements, and CASL skill description context
+- AI-powered course title suggestions (20 SEO-friendly titles from a topic)
 - Optional special requirements field for topic generation and min entry requirements
 - Auto-calculated duration per topic, per method
 
